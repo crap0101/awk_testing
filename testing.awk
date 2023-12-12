@@ -20,6 +20,8 @@
 @namespace "testing"
 
 BEGIN {
+    outfile = "foo"
+    OUTFILE = "/dev/stdout"
     GLOBAL_MUST_EXIT = 1
     MSG_TRUE = "OK"
     MSG_FALSE = "FAIL"
@@ -110,9 +112,22 @@ function assert_command(cmd, must_exit, msg, ignore) {
 # UTILITY FUNCTIONS #
 #####################
 
+function set_outfile(filename,    __prev) {
+    # Prints messagges on $filename (default is to print on stdout).
+    # Returns the previous set output file.
+    __prev = OUTFILE
+    OUTFILE = filename
+    return __prev
+}
+
+function get_outfile() {
+    # Returns the current output file.
+    return OUTFILE
+}
+
 function message(condition, msg) {
-    # Print $msg and, either, MSG_TRUE or MSG_FALSE depending on $condition.
-    printf("%s --> %s\n", msg, condition ? MSG_TRUE : MSG_FALSE) > "/dev/stderr"
+    # Prints $msg and, either, MSG_TRUE or MSG_FALSE depending on $condition.
+    printf("%s --> %s\n", msg, condition ? MSG_TRUE : MSG_FALSE) >> OUTFILE
 }
 
 
@@ -121,6 +136,8 @@ function message(condition, msg) {
 #####################
 
 function start_test_report() {
+    # Set some variables for a new tests report.
+    # Call it before the first test case.
     REPORT["ok_tests_count"] = 0
     REPORT["fail_tests_count"] = 0
     REPORT["ignored_tests_count"] = 0
@@ -129,12 +146,15 @@ function start_test_report() {
 }
 
 function end_test_report() {
+    # Set some report's variables. when the tests report has done.
+    # Call it after the last test case.
     REPORT["running"] = 0
 }
 
 function report() {
+    # Prints the report results.
     if (REPORT["running"])
-	print ("WARNING: tests seems to still be in progress...") > "/dev/stderr"
+	print ("WARNING: tests seems to still be in progress...") >> OUTFILE
     printf ("===== TESTS REPORT =====\n" \
 	    "total tests:      %3d\n" \
 	    "successful tests: %3d\n" \
@@ -145,5 +165,5 @@ function report() {
 	    REPORT["ok_tests_count"],
 	    REPORT["fail_tests_count"],
 	    REPORT["no_tests_count"],
-	    REPORT["ignored_tests_count"]) > "/dev/stderr"
+	    REPORT["ignored_tests_count"]) >> OUTFILE
 }

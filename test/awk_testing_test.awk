@@ -2,9 +2,27 @@
 @include "testing"
 # NOTE: use shell commands: true, false
 BEGIN {
+    # set an output file via the command line -v option
+    # and save the default value for later use
+    if (OUTPUT)
+	_default_outfile = testing::set_outfile(OUTPUT)
+    else
+	_default_outfile = testing::get_outfile()
+    # start with a fresh file:
+    printf "" > testing::get_outfile()
+
     # report test later, meanwhile...
     testing::start_test_report()
 
+    # TEST set_outfile
+    _outfile = "fake_outfile"
+    _prev = testing::set_outfile(_outfile)
+    _rev = testing::set_outfile(_prev)
+    # default output file is /dev/stdout if not changed from the command line
+    testing::assert_equal("/dev/stdout", _default_outfile, 1, "> set_outfile (default)")
+    testing::assert_equal(_prev, OUTPUT ? OUTPUT : _default_outfile, 1, "> set_outfile (prev)")
+    testing::assert_equal(_rev, _outfile, 1, "> set_outfile (revert)")
+    
     ignore = 1
     # TEST assert_true
     if (! testing::assert_true(1, 1, "assert_true(1, 1)")) {
@@ -53,7 +71,6 @@ BEGIN {
     testing::assert_true(! testing::assert_false(1, 0, "", ignore), 1, "assert_false(1, 0)")
     cmd = "awk -i testing 'BEGIN { testing::assert_false(1, 1)}'"
     testing::assert_true(! testing::assert_command(cmd, 0, "", ignore), 1, "assert_command / assert_false")
-    #testing::assert_true(testing::assert_command(cmd, 1, "assert_command / assert_false [FATAL]")) # fatal
 
     # TEST assert_nothing
     testing::assert_true(testing::assert_nothing(0, 0, "", ignore), 1, "assert_nothing(0, 0)")
@@ -73,14 +90,14 @@ BEGIN {
     testing::assert_false(testing::assert_not_equal("1", "1", 0, "", ignore), 1, "assert_not_equal(\"1\", \"1\", 1)")
     testing::assert_false(testing::assert_not_equal("foo", "foo", 0, "", ignore), 1, "assert_not_equal(\"foo\", \"foo\", 1)")
     testing::assert_true(testing::assert_not_equal(2, 1, 0, "", ignore), 1, "assert_not_equal(2, 1, 0)")
-    cmd = "awk -i testing 'BEGIN { testing::assert_not_equal(2, 1, 1, \"assert_not_equal from system()\")}'"
+    cmd = sprintf("awk -i testing 'BEGIN { testing::assert_not_equal(2, 1, 1, \"assert_not_equal from system()\")}' >> %s", testing::get_outfile())
     testing::assert_true(testing::assert_command(cmd, 0, "", ignore), 1, "assert_not_equal from system()")
 
     testing::end_test_report()
     testing::report()
 
-    print "================================="
-    print "---- REPORT'S FUNCTIONS TESTS ---"
+    printf("=================================\n" \
+	   "---- REPORT'S FUNCTIONS TESTS ---\n") >> testing::get_outfile()
     # TEST report
     testing::assert_false(REPORT["running"], 1, "report running (no)")
 
