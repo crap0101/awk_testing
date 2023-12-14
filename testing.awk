@@ -25,11 +25,14 @@ BEGIN {
     GLOBAL_MUST_EXIT = 1
     MSG_TRUE = "OK"
     MSG_FALSE = "FAIL"
+    PREFIX = ""
+    SEPARATOR = " --> "
     REPORT["ok_tests_count"] = 0
     REPORT["fail_tests_count"] = 0
     REPORT["ignored_tests_count"] = 0
     REPORT["no_tests_count"] = 0
     REPORT["running"] = 0
+    STDERR = "/dev/stderr"
 }
 
 ###################
@@ -125,9 +128,67 @@ function get_outfile() {
     return OUTFILE
 }
 
+function set_messages(prefix, separator, iftrue, iffalse) {
+    # Sets some formatting options for the messagges
+    # printed by the testing functions.
+    # The format string will be composed as
+    # "$prefix$ MESSAGE $separator ($iftrue|$iffalse)\n"
+    # (without spaces between them, showed now only for clarity).
+    # For example, the call of  assert_true(1==1, must_exit, "1 equals 1?"
+    # using the default $prefix, $sepatator and $iftrue strings, will print:
+    # "1 equals 1? --> OK".
+    PREFIX = prefix
+    SEPARATOR = separator
+    MSG_TRUE = iftrue
+    MSG_FALSE = iffalse
+}
+
+function set_messages_array(arr) {
+    # Like <set_messages>, but reading the values from the $arr array,
+    # where the index must be (any of) "prefix", "separator", "iftrue",
+    # "iffalse". The meaning is the same as the <set_message> function.
+    # Returns false if any $arr index are not one of the above mentionedm
+    # otherwise returns true.
+    for (i in arr)
+	switch (i) {
+	    case "prefix":
+		PREFIX = arr[i]
+		break
+	    case "separator":
+		SEPARATOR = arr[i]
+		break
+	    case "iftrue":
+		MSG_TRUE = arr[i]
+		break
+	    case "iffalse":
+		MSG_FALSE = arr[i]
+		break
+	    default:
+		printf("Unknown format string value <%s>\n", i) >> STDERR
+		return 0
+	}
+    return 1
+}
+
+function get_messages_array(arr) {
+    # Fills $arr with the previous set (with <set_messages>
+    # or <set_messages_array> functions) messages formatting strigns,
+    # or the default values.
+    # The indexes are the same of the <set_messages_array> function.
+    # NOTE: $arr is deleted at function call.
+    delete arr
+    arr["prefix"] = PREFIX
+    arr["separator"] = SEPARATOR
+    arr["iftrue"] = MSG_TRUE
+    arr["iffalse"] = MSG_FALSE
+}
+
 function message(condition, msg) {
-    # Prints $msg and, either, MSG_TRUE or MSG_FALSE depending on $condition.
-    printf("%s --> %s\n", msg, condition ? MSG_TRUE : MSG_FALSE) >> OUTFILE
+    # Formats and prints on the file choosed with <set_outfile>
+    # the string $msg following the rules described
+    # in the <set_messages> function,
+    printf("%s%s %s %s\n",
+	   PREFIX, msg, SEPARATOR, condition ? MSG_TRUE : MSG_FALSE) >> OUTFILE
 }
 
 

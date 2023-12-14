@@ -19,38 +19,38 @@ BEGIN {
     _prev = testing::set_outfile(_outfile)
     _rev = testing::set_outfile(_prev)
     # default output file is /dev/stdout if not changed from the command line
-    testing::assert_equal("/dev/stdout", _default_outfile, 1, "> set_outfile (default)")
-    testing::assert_equal(_prev, OUTPUT ? OUTPUT : _default_outfile, 1, "> set_outfile (prev)")
-    testing::assert_equal(_rev, _outfile, 1, "> set_outfile (revert)")
+    testing::assert_equal("/dev/stdout", _default_outfile, 1, "set_outfile (default)")
+    testing::assert_equal(_prev, OUTPUT ? OUTPUT : _default_outfile, 1, "set_outfile (prev)")
+    testing::assert_equal(_rev, _outfile, 1, "set_outfile (revert)")
     
     ignore = 1
     # TEST assert_true
     if (! testing::assert_true(1, 1, "assert_true(1, 1)")) {
-	print("ERROR: assert_true(1,1)") > "/dev/stderr"
+	print("ERROR: assert_true(1,1)") >> OUTFILE
 	exit(1)
     }
     if (! testing::assert_true(1, 0, "assert_true(1, 0)")) {
-	print("ERROR: assert_true(1,0)") > "/dev/stderr"
+	print("ERROR: assert_true(1,0)") >> OUTFILE
 	exit(1)
     }
     if (testing::assert_true(0, 0, "! assert_true(0, 0) [MUST FAIL]", ignore)) {
-	print("ERROR: assert_true(0,0)") > "/dev/stderr"
+	print("ERROR: assert_true(0,0)") >> OUTFILE
 	exit(1)
     }
 
     # --- INTERLUDE --- #
     # TEST assert_command (which will be used later for other tests)
     if (testing::assert_command("false", 0, "assert_command(false) [MUST FAIL]", ignore)) {
-	print("ERROR: assert_command(false)") > "/dev/stderr"
+	print("ERROR: assert_command(false)") >> OUTFILE
 	exit(1)
     }
     if (! testing::assert_command("true", 0, "assert_command(true)")) {
-	print("ERROR: assert_command(true)") > "/dev/stderr"
+	print("ERROR: assert_command(true)") >> OUTFILE
 	exit(1)
     }
     cmd = "awk -i testing 'BEGIN { testing::assert_command(\"false\", 1)}'"
     if (testing::assert_command(cmd, 0, "! assert_command / assert_command [MUST FAIL]", ignore)) {
-	print("ERROR: assert_command / assert_command") > "/dev/stderr"
+	print("ERROR: assert_command / assert_command") >> OUTFILE
 	exit(1)
     }
 
@@ -58,7 +58,7 @@ BEGIN {
     # TEST assert_true
     cmd = "awk -i testing 'BEGIN { testing::assert_true(0, 1)}'"
     if (testing::assert_command(cmd, 0, "assert_command / assert_true [MUST FAIL]", ignore)) {
-	print("ERROR: assert_command / assert_true") > "/dev/stderr"
+	print("ERROR: assert_command / assert_true") >> OUTFILE
 	exit(1)
     }
 
@@ -93,6 +93,30 @@ BEGIN {
     cmd = sprintf("awk -i testing 'BEGIN { testing::assert_not_equal(2, 1, 1, \"assert_not_equal from system()\")}' >> %s", testing::get_outfile())
     testing::assert_true(testing::assert_command(cmd, 0, "", ignore), 1, "assert_not_equal from system()")
 
+    # TEST set_messages /set_messages_array / get_messages_array
+    delete arr
+    delete def_msg_arr
+    # first, save the actual value, to be restored later
+    testing::get_messages_array(def_msg_arr)
+    
+    testing::set_messages("prefix", "sep", "true", "FALSE")
+    testing::get_messages_array(arr)
+    testing::assert_equal(arr["prefix"], "prefix", 1, "PREFIX set to \"prefix\"")
+    testing::assert_equal(arr["separator"], "sep", 1, "SEPARATOR set to \"sep\"")
+    testing::assert_equal(arr["iftrue"], "true", 1, "MSG_TRUE set to \"true\"")
+    testing::assert_equal(arr["iffalse"], "FALSE", 1, "MSG_FALSE set to \"FALSE\"")
+    # now restore the original values
+    testing::set_messages_array(def_msg_arr)
+    testing::get_messages_array(arr)
+    for (i in arr)
+	testing::assert_equal(arr[i], def_msg_arr[i], 1, sprintf("<%s> restored to %s", i, def_msg_arr[i]))
+
+    # test fail set
+    delete arr
+    arr["foobar"] = "err"
+    testing::assert_false(testing::set_messages_array(arr), 1, "! set_messages_array with wrong indexes")
+
+    
     testing::end_test_report()
     testing::report()
 
